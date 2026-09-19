@@ -1,0 +1,90 @@
+/*
+你可以把本源码放在CCI\.Plugins文件夹中编译[]
+You can put this file into "CCI\.Plugins" dir to compile.
+*/
+#include <amxx/amxmodx>
+#include <amxx/fakemeta>
+#include <amxx/engine>
+#include <xtension/Class>
+
+new PodiumEnt, LeftAvatarEnt, RightAvatarEnt, MiddleAvatarEnt
+new LeftAura, RightAura
+new bool: PodiumVisible[33]
+
+public plugin_init()
+{
+	register_plugin("ESF: ECX Podium Hook", "1.0", "ESFKAMI");
+	register_forward(FM_AddToFullPack, "fw_AddToFullPack_Post", true)
+}
+
+public @ClassCreation()
+{
+	PodiumEnt = find_ent_by_class(0, "corePodium")
+	LeftAvatarEnt = find_ent_by_class(0, "coreAvatar")
+	RightAvatarEnt = LeftAvatarEnt + 1
+	MiddleAvatarEnt = LeftAvatarEnt + 2
+
+	new Float: PodiumOrg[3], Float: LeftAuraOrg[3], Float: RightAuraOrg[3], Float: MiddleAuraOrg[3]
+	pev(PodiumEnt, pev_origin, PodiumOrg)// 获取选人界面实体坐标[] get the origin of the podium entity
+	pev(LeftAvatarEnt, pev_origin, LeftAuraOrg)// 获取左侧人物实体坐标[] get origin for the left aura entity
+	pev(RightAvatarEnt, pev_origin, RightAuraOrg)// 获取右侧人物实体坐标[] get origin for the right aura entity
+	pev(MiddleAvatarEnt, pev_origin, MiddleAuraOrg)// 获取中间人物实体坐标[] get the origin of the middle avatar entity
+
+	set_pev(LeftAvatarEnt, pev_sequence, 2)// 为左侧人物实体设定播放动作[] set sequence for the left avatar entity
+	set_pev(RightAvatarEnt, pev_sequence, 2)// 为右侧人物实体设定播放动作[] set sequence for the right avatar entity
+
+	LeftAura = create_entity( "env_model" )// 创建左边的暴气模型实体[] create the left aura entity
+	engfunc( EngFunc_SetModel, LeftAura, "models/evolution/Auras/shape_01.mdl" )// 为实体设置模型[] set model
+	entity_set_float(LeftAura, EV_FL_framerate, 1.0)// 设置动作播放帧率[] set framerate
+	entity_set_int(LeftAura, EV_INT_sequence, 0)// 设置动作[] set sequence
+	set_pev( LeftAura, pev_classname, "LeftAuraEnt")// 设置名字[] set class name
+	set_pev( LeftAura, pev_skin, 3)// 设置皮肤[] set skin
+	set_pev( LeftAura, pev_scale, 0.25)// 缩放大小[] set scale
+	set_pev( LeftAura, pev_origin , LeftAuraOrg)// 设定坐标[] set origin
+	set_rendering( LeftAura, kRenderFxNone, 0, 0, 0, kRenderTransAdd, 50 )// 设置渲染模式[] set render mode
+
+	// 同上[] same as above
+	RightAura = create_entity( "env_model" )
+	engfunc( EngFunc_SetModel, RightAura, "models/evolution/Auras/shape_06.mdl" )
+	entity_set_float(RightAura, EV_FL_framerate, 1.0);
+	entity_set_int(RightAura, EV_INT_sequence, 0)
+	set_pev(RightAura, pev_classname, "RightAuraEnt")
+	set_pev(RightAura, pev_skin, 5)
+	set_pev(RightAura, pev_scale, 0.25)
+	set_pev(RightAura, pev_origin , RightAuraOrg)
+	set_rendering(RightAura, kRenderFxNone, 0, 0, 0, kRenderTransAdd, 50 )
+}
+
+public fw_AddToFullPack_Post(ES_Handle, e, iEntity, iHost, iHostFlags, iPlayer, iSet)
+{
+	if(pev_valid(iEntity))
+	{
+		new szClassName[32]
+		pev(iEntity, pev_classname, szClassName, 31)
+		if(equal(szClassName, "coreAvatar")) // 判断玩家是否正在选择人物[] check if client is choosing characters
+		{
+			if(get_es(ES_Handle, ES_ModelIndex) < 10)
+			{
+				PodiumVisible[iHost] = false
+			}
+			else
+			{
+				PodiumVisible[iHost] = true
+			}
+		}
+
+		if(equal(szClassName, "LeftAuraEnt") || equal(szClassName, "RightAuraEnt"))// 设置选人界面中左右两侧暴气实体是否可视[] set whether the auras are visible
+		{
+			if(!PodiumVisible[iHost])// 如果玩家没有在选项人物[] if the Podium entity is invisible
+			{
+				set_es(ES_Handle, ES_Effects, EF_NODRAW)// 单向渲染选人界面中左右两侧暴气实体为不可视[] set the aura entity invisible to a single client
+			}
+		}
+	}
+}
+
+public plugin_precache()
+{
+	precache_model("models/evolution/Auras/shape_01.mdl")
+	precache_model("models/evolution/Auras/shape_06.mdl")
+}

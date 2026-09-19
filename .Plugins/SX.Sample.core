@@ -1,0 +1,111 @@
+#include <xtension/special>
+#include <ipci/ascend>
+
+stock SpecialXtension:sxSample;
+
+public plugin_init ()
+{
+	register_plugin( "Kaioken", "1.0", "core | Raven" );
+}
+
+public @SpecialCreation ()
+{
+	beginSpecialCreation( "Sample", "", "callbackSample", "special_kaioken" );
+	
+	addSpecialCharge( IN_ATTACK, 5.0, 8.0, false );
+	addSpecialCharge( IN_ATTACK2, 3.0, 10.0, true );
+	
+	addSpecialControl( IN_JUMP );
+	
+	addSpecialHook( sxhDeathMessage, "deathmsgSample" );
+		
+	sxSample = endSpecialCreation();
+}
+
+public callbackSample ( Client, CSpecialState:Status, Control, Float:Charge )
+{
+	switch ( Status )
+	{
+		case ssCharge: // called every 0.1 secs
+		{
+			
+			// allways including isDead, inTransform
+			if ( ( getClientPOWERUP( Client ) && !getClientXFROZEN( Client ) )
+			  || getClientTURBO( Client )
+			  || getClientMELEE( Client )
+			  || getClientWALLGND( Client )
+			  || getClientSWOOPING( Client )
+			  || getClientTHROWAWAY( Client )
+			  || getClientTHROW( Client )
+			   )
+			{
+				client_print( Client, print_chat, "< Sample > ssCharge > Denied %.2f", Charge );
+				
+				return 0; // > ssChargeAborted if Charge > 0.0
+			}
+			
+			client_print( Client, print_chat, "< Sample > ssCharge > Charging %.2f", Charge );
+			
+			if ( Charge >= 1.0 )
+			{
+				if ( Control == IN_ATTACK )
+					client_print( Client, print_chat, "< Sample > ssCharge > Engage 1st Gear", Charge );
+				else if ( Control == IN_ATTACK2 )
+					client_print( Client, print_chat, "< Sample > ssCharge > Engage 2nd Gear", Charge );
+				// else WHAT ????
+				
+				setClientSPECIALSTATE( Client, sxSample, true );
+			}
+
+			return 1;
+		}
+		
+		case ssChargeReleased:
+		{
+			if ( Charge < 0.3 )
+				client_print( Client, print_chat, "< Sample > ssChargeReleased > Do Nothing %.2f", Charge );
+			else
+			{
+				if ( Control == IN_ATTACK )
+					client_print( Client, print_chat, "< Sample > ssCharge > Engage 1st Gear", Charge );
+				else if ( Control == IN_ATTACK2 )
+					client_print( Client, print_chat, "< Sample > ssCharge > Engage 2nd Gear", Charge );
+				
+				setClientSPECIALSTATE( Client, sxSample, true );
+			}
+		}
+		
+		// Called when Charge > 0.0 by Death, Disconnect, IconSwitch to another Weapon, Out of Ki
+		case ssChargeAborted:
+		{
+			client_print( Client, print_chat, "< Sample > ssChargeAborted > %.2f", Charge );
+			return 0;
+		}
+		
+		case ssControlInvocation:
+		{
+			if ( Control == IN_JUMP )
+			{
+				setClientSPECIALSTATE( Client, sxSample, false );
+				setClientSPECIALCOOLDOWN( Client, sxSample, 10.0 );
+				client_print( Client, print_chat, "< Sample > ssControlInvocation > Abort" );
+			}
+			return 0;
+		}
+		
+		// Called when Specialstate = true by Death, Disconnect, IconSwitch to another Weapon
+		case ssForceAbort:
+		{
+			client_print( Client, print_chat, "< Sample > ssForceAbort" );
+			setClientSPECIALCOOLDOWN( Client, sxSample, 10.0 );
+			return 0;
+		}
+	}
+	
+	return 1;
+}
+
+public deathmsgSample ( Client, Killer, const Weapon[] )
+{
+	set_msg_arg_string( 3, "SampleAttack" );
+}

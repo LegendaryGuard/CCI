@@ -1,0 +1,1202 @@
+#include < amxx/amxmodx >
+#include < amxx/fakemeta >
+#include < amxx/fun >
+#include < core/Devel >
+#include < ipci/Ascend >
+#include < ipci/Core >
+#include < ipci/FXLib >
+
+new Bot_Skill, Bot_Team, Bot_Page, Bot_Class;
+new Menu_CurPage, Menu_PercentType, Menu_ChatType, Menu_DebugType;
+// new bool: CL_FROZEN[33]; /* Bot Frozen */
+
+enum
+{
+	BotSkill_Best = 1,
+	BotSkill_Good,
+	BotSkill_Medium,
+	BotSkill_Weak,
+	BotSkill_Bad,
+};
+
+enum
+{
+	BotTeam_Good = 1,
+	BotTeam_Evil,
+};
+
+enum
+{
+	PercentType_Melee = 1,
+	PercentType_Teleport,
+	PercentType_Fly,
+	PercentType_Swoop,
+};
+
+enum
+{
+	ChatType_Chat = 1,
+	ChatType_Whine,
+	ChatType_Taunt,
+	ChatType_Swap,
+	ChatType_Lower,
+	ChatType_Drop,
+	ChatType_Tag,
+};
+
+enum
+{
+	DebugType_Shoot = 1,
+	DebugType_Search,
+	DebugType_Ignore,
+	DebugType_Move,
+};
+
+public plugin_init ()
+{
+	register_plugin( "The ECX Bots", "3.0", "ESFKAMI" );
+
+	register_message( get_user_msgid( "TransformFX" ), "@BotInitiateTransformation" );
+	register_message( get_user_msgid( "StopTransFX" ), "@BotCancelTransformation" );
+	register_message( get_user_msgid( "Transform" ), "@BotSetData" );
+	register_message( get_user_msgid( "ShowMenu" ), "@BotMenuInitiation" );
+	register_message( get_user_msgid( "ScoreInfo" ), "@BotClassID" );
+
+	register_menucmd( register_menuid( "ECX-Bot Menu" ), 1023, "@BotMenuCommand" );
+
+	register_menucmd( register_menuid( "Select Skill" ), 1023, "@BotMenuSkillCommand" );
+	register_menucmd( register_menuid( "Select Team" ), 1023, "@BotMenuTeamCommand" );
+	register_menucmd( register_menuid( "Select Class - Page: " ), 1023, "@BotMenuClassCommand" );
+
+	register_menucmd( register_menuid( "Advanced Settings" ), 1023, "@BotMenuAdvancedCommand" );
+	register_menucmd( register_menuid( "Set Skill" ), 1023, "@BotMenuSetSkillCommand" );
+	register_menucmd( register_menuid( "Set Percent" ), 1023, "@BotMenuSetPercentCommand" );
+	register_menucmd( register_menuid( "Select Percent" ), 1023, "@BotMenuSelectPercentCommand" );
+	register_menucmd( register_menuid( "Set Balancing" ), 1023, "@BotMenuSetBalancingCommand" );
+	register_menucmd( register_menuid( "Use Disc" ), 1023, "@BotMenuUseDiscCommand" );
+	register_menucmd( register_menuid( "Set Aggression" ), 1023, "@BotMenuSetAggressionCommand" );
+
+	register_menucmd( register_menuid( "Bot Chat" ), 1023, "@BotMenuBotChatCommand" );
+	register_menucmd( register_menuid( "Chat Switch" ), 1023, "@BotMenuChatSwitchCommand" );
+	register_menucmd( register_menuid( "Choose Percent" ), 1023, "@BotMenuChoosePercentCommand" );
+
+	register_menucmd( register_menuid( "Bot Kick" ), 1023, "@BotMenuBotKickCommand" );
+
+	register_menucmd( register_menuid( "Bot Debug" ), 1023, "@BotMenuBotDebugCommand" );
+	register_menucmd( register_menuid( "Debug Switch" ), 1023, "@BotMenuDebugSwitchCommand" );
+
+	Menu_CurPage = 1;
+}
+
+@BotMenuInitiation( MsgID, dest, Client )
+{
+	if( get_msg_arg_int( 1 ) != 1023 ) return;
+
+	new MenuBody[ 200 ];
+	get_msg_arg_string( 4, MenuBody, 200 );
+
+	MenuBody[ 1 ] = 'C';
+	MenuBody[ 2 ] = 'X';
+
+	set_msg_arg_string( 4, MenuBody );
+
+	Bot_Skill = 0;
+
+	new keys = ( 1<<0|1<<1|1<<2|1<<3|1<<4|1<<5|1<<6|1<<7|1<<8|1<<9 );
+
+	show_menu( Client, keys, MenuBody, -1 );
+}
+
+@BotMenuSkill( Client )
+{
+	new szMenuBody[ 256 ];
+	new keys;
+
+	new nLen = format( szMenuBody, 255, "Select Skill^n" );
+
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n1: Best" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n2: Good" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n3: Medium" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n4: Weak" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n5: Bad" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n6: Default" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n7: Random" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n^n0: Exit" );
+
+	keys = ( 1<<0|1<<1|1<<2|1<<3|1<<4|1<<5|1<<6|1<<9 );
+
+	show_menu( Client, keys, szMenuBody, -1 );
+}
+
+@BotMenuTeam( Client )
+{
+	new szMenuBody[ 256 ];
+	new keys;
+
+	new nLen = format( szMenuBody, 255, "Select Team^n" );
+
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n1: Team Good" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n2: Team Evil" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n3: Random Team" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n^n0: Exit" );
+
+	keys = ( 1<<0|1<<1|1<<2|1<<9 );
+
+	show_menu( Client, keys, szMenuBody, -1 );
+}
+
+@BotMenuClass( Client )
+{
+	new szMenuBody[ 256 ];
+	new keys;
+
+	new nLen = format( szMenuBody, 255, "Select Class - Page: %d^n", Menu_CurPage );
+
+	if( getClassExtensionCount() > 9 )
+	{
+		Bot_Page = floatround( ( ( float( getClassExtensionCount() ) - 8.0 ) / 7.0 ) + 1.0, floatround_ceil );
+
+		new ClassName[ 33 ], MenuBodyName[ 33 ];
+
+		if( Menu_CurPage > 1 )
+		{
+			if( Menu_CurPage < Bot_Page )
+			{
+				for( new i; i <= 9; i++ )
+				{
+					if( i == 7 )
+						formatex( MenuBodyName, 32, "^n^n8: Last" );
+					else if( i == 8 )
+						formatex( MenuBodyName, 32, "^n9: Next" );
+					else if( i == 9 )
+						formatex( MenuBodyName, 32, "^n0: Exit" );
+					else
+					{
+						getClassDATAv( ( ( Menu_CurPage - 1 ) * 7 ) + ( i + 1 ), cxName, ClassName, 32 );
+
+						formatex( MenuBodyName, 32, "^n%d: %s", i + 1, ClassName );
+					}
+
+					nLen += format( szMenuBody[ nLen ], 255-nLen, MenuBodyName );
+				}
+
+				keys = ( 1<<0|1<<1|1<<2|1<<3|1<<4|1<<5|1<<6|1<<7|1<<8|1<<9 );
+			}
+			else
+			{
+				for( new i; i <= getClassExtensionCount() - ( ( Bot_Page - 1 ) * 7 ); i++ )
+				{
+					if( i == getClassExtensionCount() - ( ( Bot_Page - 1 ) * 7 ) - 1 )
+						formatex( MenuBodyName, 32, "^n^n8: Last" );
+					else if( i == getClassExtensionCount() - ( ( Bot_Page - 1 ) * 7 ) )
+						formatex( MenuBodyName, 32, "^n0: Exit" );
+					else
+					{
+						getClassDATAv( ( ( Menu_CurPage - 1 ) * 7 ) + ( i + 1 ), cxName, ClassName, 32 );
+
+						formatex( MenuBodyName, 32, "^n%d: %s", i + 1, ClassName );
+					}
+
+					nLen += format( szMenuBody[ nLen ], 255-nLen, MenuBodyName );
+				}
+
+				switch( getClassExtensionCount() - ( ( Bot_Page - 1 ) * 7 ) - 1 )
+				{
+					case 1: keys = ( 1<<0|1<<7|1<<9 );
+					case 2: keys = ( 1<<0|1<<1|1<<7|1<<9 );
+					case 3: keys = ( 1<<0|1<<1|1<<2|1<<7|1<<9 );
+					case 4: keys = ( 1<<0|1<<1|1<<2|1<<3|1<<7|1<<9 );
+					case 5: keys = ( 1<<0|1<<1|1<<2|1<<3|1<<4|1<<7|1<<9 );
+					case 6: keys = ( 1<<0|1<<1|1<<2|1<<3|1<<4|1<<5|1<<7|1<<9 );
+					case 7: keys = ( 1<<0|1<<1|1<<2|1<<3|1<<4|1<<5|1<<6|1<<7|1<<9 );
+				}
+			}
+		}
+		else
+		{
+			for( new i; i <= 9; i++ )
+			{
+				if( i == 8 )
+					formatex( MenuBodyName, 32, "^n^n9: Next" );
+				else if( i == 9 )
+					formatex( MenuBodyName, 32, "^n0: Exit" );
+				else
+				{
+					getClassDATAv( i, cxName, ClassName, 32 );
+
+					formatex( MenuBodyName, 32, "^n%d: %s", i + 1, ClassName );
+				}
+
+				nLen += format( szMenuBody[ nLen ], 255-nLen, MenuBodyName );
+			}
+
+			keys = ( 1<<0|1<<1|1<<2|1<<3|1<<4|1<<5|1<<6|1<<7|1<<8|1<<9 );
+		}
+	}
+	else
+	{
+		Bot_Page = 1;
+
+		new ClassName[ 33 ], MenuBodyName[ 33 ];
+
+		for( new i; i <= getClassExtensionCount(); i++ )
+		{
+			if( i == getClassExtensionCount() )
+				formatex( MenuBodyName, 32, "^n^n0: Exit" );
+			else
+			{
+				getClassDATAv( i, cxName, ClassName, 32 );
+
+				formatex( MenuBodyName, 32, "^n%d: %s", i + 1, ClassName );
+			}
+
+			nLen += format( szMenuBody[ nLen ], 255-nLen, MenuBodyName );
+		}
+
+		switch( getClassExtensionCount() )
+		{
+			case 0: keys = ( 1<<9 );
+			case 1: keys = ( 1<<0|1<<9 );
+			case 2: keys = ( 1<<0|1<<1|1<<9 );
+			case 3: keys = ( 1<<0|1<<1|1<<2|1<<9 );
+			case 4: keys = ( 1<<0|1<<1|1<<2|1<<3|1<<9 );
+			case 5: keys = ( 1<<0|1<<1|1<<2|1<<3|1<<4|1<<9 );
+			case 6: keys = ( 1<<0|1<<1|1<<2|1<<3|1<<4|1<<5|1<<9 );
+			case 7: keys = ( 1<<0|1<<1|1<<2|1<<3|1<<4|1<<5|1<<6|1<<9 );
+			case 8: keys = ( 1<<0|1<<1|1<<2|1<<3|1<<4|1<<5|1<<6|1<<7|1<<9 );
+			case 9: keys = ( 1<<0|1<<1|1<<2|1<<3|1<<4|1<<5|1<<6|1<<7|1<<8|1<<9 );
+		}
+	}
+
+	show_menu( Client, keys, szMenuBody, -1 );
+}
+
+@BotMenuAdvanced( Client )
+{
+	new szMenuBody[ 256 ];
+	new keys;
+
+	new nLen = format( szMenuBody, 255, "Advanced Settings^n" );
+
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n1: Set Bot Skill" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n2: Percent Settings" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n3: Bot Team Balancing" )
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n4: Bots Use discs" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n5: Restore Bot Personalities" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n6: Set Bot Aggression Level" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n^n0: Exit" );
+
+	keys = ( 1<<0|1<<1|1<<2|1<<3|1<<4|1<<5|1<<9 );
+
+	show_menu( Client, keys, szMenuBody, -1 );
+}
+
+@BotMenuSetSkill( Client )
+{
+	new szMenuBody[ 256 ];
+	new keys;
+
+	new nLen = format( szMenuBody, 255, "Set Skill^n" );
+
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n1: Best" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n2: Good" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n3: Medium" )
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n4: Weak" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n5: Bad" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n6: Default" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n^n0: Exit" );
+
+	keys = ( 1<<0|1<<1|1<<2|1<<3|1<<4|1<<5|1<<9 );
+
+	show_menu( Client, keys, szMenuBody, -1 );
+}
+
+@BotMenuSetPercent( Client )
+{
+	new szMenuBody[ 256 ];
+	new keys;
+
+	new nLen = format( szMenuBody, 255, "Set Percent^n" );
+
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n1: Set Melee Percent" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n2: Set Teleport Percent" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n3: Set Fly Percent" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n4: Set Swoop Percent" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n^n0: Exit" );
+
+	keys = ( 1<<0|1<<1|1<<2|1<<3|1<<9 );
+
+	show_menu( Client, keys, szMenuBody, -1 );
+}
+
+@BotMenuSelectPercent( Client )
+{
+	new szMenuBody[ 256 ];
+	new keys;
+
+	new nLen = format( szMenuBody, 255, "Select Percent^n" );
+
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n1: 100%" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n2: 80% - 99%" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n3: 60% - 80%" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n4: 40% - 60%" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n5: 20% - 40%" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n6: 1% - 20%" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n7: 0%" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n8: Random" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n^n0: Exit" );
+
+	keys = ( 1<<0|1<<1|1<<2|1<<3|1<<4|1<<5|1<<6|1<<7|1<<9 );
+
+	show_menu( Client, keys, szMenuBody, -1 );
+}
+
+@BotMenuSetBalancing( Client )
+{
+	new szMenuBody[ 256 ];
+	new keys;
+
+	new nLen = format( szMenuBody, 255, "Set Balancing^n" );
+
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n1: Enable" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n2: Disable" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n^n0: Exit" );
+
+	keys = ( 1<<0|1<<1|1<<9 );
+
+	show_menu( Client, keys, szMenuBody, -1 );
+}
+
+@BotMenuUseDisc( Client )
+{
+	new szMenuBody[ 256 ];
+	new keys;
+
+	new nLen = format( szMenuBody, 255, "Use Disc^n" );
+
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n1: Enable" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n2: Disable" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n^n0: Exit" );
+
+	keys = ( 1<<0|1<<1|1<<9 );
+
+	show_menu( Client, keys, szMenuBody, -1 );
+}
+
+@BotMenuSetAggression( Client )
+{
+	new szMenuBody[ 256 ];
+	new keys;
+
+	new nLen = format( szMenuBody, 255, "Set Aggression^n" );
+
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n1: Defensive" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n2: Normal" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n3: Aggressive" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n^n0: Exit" );
+
+	keys = ( 1<<0|1<<1|1<<2|1<<9 );
+
+	show_menu( Client, keys, szMenuBody, -1 );
+}
+
+@BotMenuChat( Client )
+{
+	new szMenuBody[ 256 ];
+	new keys;
+
+	new nLen = format( szMenuBody, 255, "Bot Chat^n" );
+
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n1: Chat On/Off" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n2: Set Chat Percent" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n3: Set Whine Percent" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n4: Set Taunt Percent" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n5: Set Swap Percent" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n6: Set Lower Percent" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n7: Set Drop Percent" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n8: Set Tag Percent" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n^n0: Exit" );
+
+	keys = ( 1<<0|1<<1|1<<2|1<<3|1<<4|1<<5|1<<6|1<<7|1<<9 );
+
+	show_menu( Client, keys, szMenuBody, -1 );
+}
+
+@BotMenuChatSwitch( Client )
+{
+	new szMenuBody[ 256 ];
+	new keys;
+
+	new nLen = format( szMenuBody, 255, "Chat Switch^n" );
+
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n1: Enable" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n2: Disable" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n^n0: Exit" );
+
+	keys = ( 1<<0|1<<1|1<<9 );
+
+	show_menu( Client, keys, szMenuBody, -1 );
+}
+
+@BotMenuChoosePercent( Client )
+{
+	new szMenuBody[ 256 ];
+	new keys;
+
+	new nLen = format( szMenuBody, 255, "Choose Percent^n" );
+
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n1: 100%" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n2: 80% - 99%" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n3: 60% - 80%" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n4: 40% - 60%" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n5: 20% - 40%" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n6: 1% - 20%" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n7: 0%" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n8: Random" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n^n0: Exit" );
+
+	keys = ( 1<<0|1<<1|1<<2|1<<3|1<<4|1<<5|1<<6|1<<7|1<<9 );
+
+	show_menu( Client, keys, szMenuBody, -1 );
+}
+
+@BotMenuKick( Client )
+{
+	new szMenuBody[ 256 ];
+	new keys;
+
+	new nLen = format( szMenuBody, 255, "Bot Kick^n" );
+
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n1: Kick All Bots" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n2: Kick Good Team Bots" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n3: Kick Evil Team Bots" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n^n0: Exit" );
+
+	keys = ( 1<<0|1<<1|1<<2|1<<9 );
+
+	show_menu( Client, keys, szMenuBody, -1 );
+}
+
+@BotMenuDebug( Client )
+{
+	new szMenuBody[ 256 ];
+	new keys;
+
+	new nLen = format( szMenuBody, 255, "Bot Debug^n" );
+
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n1: Bots Shoot" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n2: Bots Search Enemies" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n3: Bots Ignore Human Players" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n4: Bots Move" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n^n0: Exit" );
+
+	keys = ( 1<<0|1<<1|1<<2|1<<3|1<<9 );
+
+	show_menu( Client, keys, szMenuBody, -1 );
+}
+
+@BotMenuDebugSwitch( Client )
+{
+	new szMenuBody[ 256 ];
+	new keys;
+
+	new nLen = format( szMenuBody, 255, "Debug Switch^n" );
+
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n1: Enable" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n2: Disable" );
+	nLen += format( szMenuBody[ nLen ], 255-nLen, "^n^n0: Exit" );
+
+	keys = ( 1<<0|1<<1|1<<9 );
+
+	show_menu( Client, keys, szMenuBody, -1 );
+}
+
+@BotMenuCommand( Client, key )
+{
+	switch( key )
+	{
+		case 0:
+		{
+			if( getClassExtensionCount() > 0 )
+				Bot_Class = random_num( 1, getClassExtensionCount() );
+			else
+				Bot_Class = 0;
+
+			new szCommand[ 18 ];
+			formatex( szCommand, 17, "addbot %d 9 * %d", random_num( BotTeam_Good, BotTeam_Evil ), random_num( BotSkill_Best, BotSkill_Bad ) );
+			client_cmd( Client, szCommand );
+		}
+		case 1: @BotMenuSkill( Client );
+		case 2: client_print( Client, print_chat, "[EN]Disabled because of the bugs of SBOT." );
+		case 3: client_print( Client, print_chat, "[EN]Disabled because of the delay of filling." );
+		case 4: @BotMenuAdvanced( Client );
+		case 5: @BotMenuChat( Client );
+		case 6: client_cmd( Client, "botkicklast" );
+		case 7: @BotMenuKick( Client );
+		case 8: @BotMenuDebug( Client );
+	}
+
+	return PLUGIN_HANDLED
+}
+
+@BotMenuSkillCommand( Client, key )
+{
+	switch( key )
+	{
+		case 0: Bot_Skill = BotSkill_Best;
+		case 1: Bot_Skill = BotSkill_Good;
+		case 2: Bot_Skill = BotSkill_Medium;
+		case 3: Bot_Skill = BotSkill_Weak;
+		case 4: Bot_Skill = BotSkill_Bad;
+		case 5: Bot_Skill = BotSkill_Weak;
+		case 6: Bot_Skill = random_num( BotSkill_Best, BotSkill_Bad );
+		case 9: Bot_Skill = 0;
+	}
+
+	if( Bot_Skill != 0 )
+	{
+		@BotMenuTeam( Client );
+	}
+
+	return PLUGIN_HANDLED
+}
+
+@BotMenuTeamCommand( Client, key )
+{
+	switch( key )
+	{
+		case 0: Bot_Team = BotTeam_Good;
+		case 1: Bot_Team = BotTeam_Evil;
+		case 2: Bot_Team = random_num( BotTeam_Good, BotTeam_Evil );
+		case 9: Bot_Team = 0;
+	}
+
+	if( Bot_Team != 0 )
+	{
+		@BotMenuClass( Client );
+	}
+
+	return PLUGIN_HANDLED
+}
+
+@BotMenuClassCommand( Client, key )
+{
+	if( Bot_Page > 1 )
+	{
+		if( Menu_CurPage > 1 )
+		{
+			if( Menu_CurPage < Bot_Page )
+			{
+				switch( key )
+				{
+					case 0: Bot_Class = ( ( Menu_CurPage - 1 ) * 7 ) + ( key + 1 + 1 );
+					case 1: Bot_Class = ( ( Menu_CurPage - 1 ) * 7 ) + ( key + 1 + 1 );
+					case 2: Bot_Class = ( ( Menu_CurPage - 1 ) * 7 ) + ( key + 1 + 1 );
+					case 3: Bot_Class = ( ( Menu_CurPage - 1 ) * 7 ) + ( key + 1 + 1 );
+					case 4: Bot_Class = ( ( Menu_CurPage - 1 ) * 7 ) + ( key + 1 + 1 );
+					case 5: Bot_Class = ( ( Menu_CurPage - 1 ) * 7 ) + ( key + 1 + 1 );
+					case 6: Bot_Class = ( ( Menu_CurPage - 1 ) * 7 ) + ( key + 1 + 1 );
+					case 7:
+					{
+						Bot_Class = 0;
+						Menu_CurPage--;
+						@BotMenuClass( Client );
+					}
+					case 8:
+					{
+						Bot_Class = 0;
+						Menu_CurPage++;
+						@BotMenuClass( Client );
+					}
+					case 9: Bot_Class = 0;
+				}
+			}
+			else
+			{
+				switch( key )
+				{
+					case 0: Bot_Class = ( ( Bot_Page - 1 ) * 7 ) + ( key + 1 + 1 );
+					case 1: Bot_Class = ( ( Bot_Page - 1 ) * 7 ) + ( key + 1 + 1 );
+					case 2: Bot_Class = ( ( Bot_Page - 1 ) * 7 ) + ( key + 1 + 1 );
+					case 3: Bot_Class = ( ( Bot_Page - 1 ) * 7 ) + ( key + 1 + 1 );
+					case 4: Bot_Class = ( ( Bot_Page - 1 ) * 7 ) + ( key + 1 + 1 );
+					case 5: Bot_Class = ( ( Bot_Page - 1 ) * 7 ) + ( key + 1 + 1 );
+					case 6: Bot_Class = ( ( Bot_Page - 1 ) * 7 ) + ( key + 1 + 1 );
+					case 7:
+					{
+						Bot_Class = 0;
+						Menu_CurPage--;
+						@BotMenuClass( Client );
+					}
+					case 9: Bot_Class = 0;
+				}
+			}
+		}
+		else
+		{
+			switch( key )
+			{
+				case 0: Bot_Class = 1;
+				case 1: Bot_Class = 2;
+				case 2: Bot_Class = 3;
+				case 3: Bot_Class = 4;
+				case 4: Bot_Class = 5;
+				case 5: Bot_Class = 6;
+				case 6: Bot_Class = 7;
+				case 7: Bot_Class = 8;
+				case 8:
+				{
+					Bot_Class = 0;
+					Menu_CurPage++;
+					@BotMenuClass( Client );
+				}
+				case 9: Bot_Class = 0;
+			}
+		}
+	}
+	else
+	{
+		switch( key )
+		{
+			case 0: Bot_Class = 1;
+			case 1: Bot_Class = 2;
+			case 2: Bot_Class = 3;
+			case 3: Bot_Class = 4;
+			case 4: Bot_Class = 5;
+			case 5: Bot_Class = 6;
+			case 6: Bot_Class = 7;
+			case 7: Bot_Class = 8;
+			case 8: Bot_Class = 9;
+			case 9: Bot_Class = 0;
+		}
+	}
+
+	if( Bot_Class != 0 )
+	{
+		//Menu_CurPage = 0; /* Initialize the menu start page. */
+
+		new szCommand[ 18 ];
+		formatex( szCommand, 17, "addbot %d 9 * %d", Bot_Team, Bot_Skill );
+		client_cmd( Client, szCommand );
+	}
+
+	return PLUGIN_HANDLED
+}
+
+@BotMenuAdvancedCommand( Client, key )
+{
+	switch( key )
+	{
+		case 0: @BotMenuSetSkill( Client );
+		case 1: @BotMenuSetPercent( Client );
+		case 2: @BotMenuSetBalancing( Client );
+		case 3: @BotMenuUseDisc( Client );
+		case 4: client_cmd( Client, "restorebotpersonalities" );
+		case 5: @BotMenuSetAggression( Client );
+	}
+
+	return PLUGIN_HANDLED
+}
+
+@BotMenuSetSkillCommand( Client, key )
+{
+	switch( key )
+	{
+		case 0: client_cmd( Client, "botskill 1" );
+		case 1: client_cmd( Client, "botskill 2" );
+		case 2: client_cmd( Client, "botskill 3" );
+		case 3: client_cmd( Client, "botskill 4" );
+		case 4: client_cmd( Client, "botskill 5" );
+		case 5: client_cmd( Client, "botskill -1" );
+	}
+
+	return PLUGIN_HANDLED
+}
+
+@BotMenuSetPercentCommand( Client, key )
+{
+	switch( key )
+	{
+		case 0: Menu_PercentType = PercentType_Melee;
+		case 1: Menu_PercentType = PercentType_Teleport;
+		case 2: Menu_PercentType = PercentType_Fly;
+		case 3: Menu_PercentType = PercentType_Swoop;
+	}
+
+	@BotMenuSelectPercent( Client );
+
+	return PLUGIN_HANDLED
+}
+
+@BotMenuSelectPercentCommand( Client, key )
+{
+	switch( key )
+	{
+		case 0:
+		{
+			if( Menu_PercentType == PercentType_Melee ) client_cmd( Client, "bot_melee_percent 100" );
+			if( Menu_PercentType == PercentType_Teleport ) client_cmd( Client, "bot_teleport_percent 100" );
+			if( Menu_PercentType == PercentType_Fly ) client_cmd( Client, "bot_fly_percent 100" );
+			if( Menu_PercentType == PercentType_Swoop ) client_cmd( Client, "bot_swoop_percent 100" );
+		}
+		case 1:
+		{
+			if( Menu_PercentType == PercentType_Melee ) client_cmd( Client, "bot_melee_percent 90" );
+			if( Menu_PercentType == PercentType_Teleport ) client_cmd( Client, "bot_teleport_percent 90" );
+			if( Menu_PercentType == PercentType_Fly ) client_cmd( Client, "bot_fly_percent 90" );
+			if( Menu_PercentType == PercentType_Swoop ) client_cmd( Client, "bot_swoop_percent 90" );
+		}
+		case 2:
+		{
+			if( Menu_PercentType == PercentType_Melee ) client_cmd( Client, "bot_melee_percent 75" );
+			if( Menu_PercentType == PercentType_Teleport ) client_cmd( Client, "bot_teleport_percent 75" );
+			if( Menu_PercentType == PercentType_Fly ) client_cmd( Client, "bot_fly_percent 75" );
+			if( Menu_PercentType == PercentType_Swoop ) client_cmd( Client, "bot_swoop_percent 75" );
+		}
+		case 3:
+		{
+			if( Menu_PercentType == PercentType_Melee ) client_cmd( Client, "bot_melee_percent 50" );
+			if( Menu_PercentType == PercentType_Teleport ) client_cmd( Client, "bot_teleport_percent 50" );
+			if( Menu_PercentType == PercentType_Fly ) client_cmd( Client, "bot_fly_percent 50" );
+			if( Menu_PercentType == PercentType_Swoop ) client_cmd( Client, "bot_swoop_percent 50" );
+		}
+		case 4:
+		{
+			if( Menu_PercentType == PercentType_Melee ) client_cmd( Client, "bot_melee_percent 25" );
+			if( Menu_PercentType == PercentType_Teleport ) client_cmd( Client, "bot_teleport_percent 25" );
+			if( Menu_PercentType == PercentType_Fly ) client_cmd( Client, "bot_fly_percent 25" );
+			if( Menu_PercentType == PercentType_Swoop ) client_cmd( Client, "bot_swoop_percent 25" );
+		}
+		case 5:
+		{
+			if( Menu_PercentType == PercentType_Melee ) client_cmd( Client, "bot_melee_percent 10" );
+			if( Menu_PercentType == PercentType_Teleport ) client_cmd( Client, "bot_teleport_percent 10" );
+			if( Menu_PercentType == PercentType_Fly ) client_cmd( Client, "bot_fly_percent 10" );
+			if( Menu_PercentType == PercentType_Swoop ) client_cmd( Client, "bot_swoop_percent 10" );
+		}
+		case 6:
+		{
+			if( Menu_PercentType == PercentType_Melee ) client_cmd( Client, "bot_melee_percent 0" );
+			if( Menu_PercentType == PercentType_Teleport ) client_cmd( Client, "bot_teleport_percent 0" );
+			if( Menu_PercentType == PercentType_Fly ) client_cmd( Client, "bot_fly_percent 0" );
+			if( Menu_PercentType == PercentType_Swoop ) client_cmd( Client, "bot_swoop_percent 0" );
+		}
+		case 7:
+		{
+			if( Menu_PercentType == PercentType_Melee ) client_cmd( Client, "bot_melee_percent -1" );
+			if( Menu_PercentType == PercentType_Teleport ) client_cmd( Client, "bot_teleport_percent -1" );
+			if( Menu_PercentType == PercentType_Fly ) client_cmd( Client, "bot_fly_percent -1" );
+			if( Menu_PercentType == PercentType_Swoop ) client_cmd( Client, "bot_swoop_percent -1" );
+		}
+	}
+
+	return PLUGIN_HANDLED
+}
+
+@BotMenuSetBalancingCommand( Client, key )
+{
+	switch( key )
+	{
+		case 0: client_cmd( Client, "bot_balanceteams 1" );
+		case 1: client_cmd( Client, "bot_balanceteams 0" );
+	}
+
+	return PLUGIN_HANDLED
+}
+
+@BotMenuUseDiscCommand( Client, key )
+{
+	switch( key )
+	{
+		case 0: client_cmd( Client, "botsusediscs 1" );
+		case 1: client_cmd( Client, "botsusediscs 0" );
+	}
+
+	return PLUGIN_HANDLED
+}
+
+@BotMenuSetAggressionCommand( Client, key )
+{
+	switch( key )
+	{
+		case 0: client_cmd( Client, "bot_aggression_level defensive" );
+		case 1: client_cmd( Client, "bot_aggression_level normal" );
+		case 2: client_cmd( Client, "bot_aggression_level aggressive" );
+	}
+
+	return PLUGIN_HANDLED
+}
+
+@BotMenuBotChatCommand( Client, key )
+{
+	switch( key )
+	{
+		case 0: @BotMenuChatSwitch( Client );
+		case 1: Menu_ChatType = ChatType_Chat;
+		case 2: Menu_ChatType = ChatType_Whine;
+		case 3: Menu_ChatType = ChatType_Taunt;
+		case 4: Menu_ChatType = ChatType_Swap;
+		case 5: Menu_ChatType = ChatType_Lower;
+		case 6: Menu_ChatType = ChatType_Drop;
+		case 7: Menu_ChatType = ChatType_Tag;
+	}
+
+	if( key > 0 && key < 8 ) @BotMenuChoosePercent( Client );
+
+	return PLUGIN_HANDLED
+}
+
+@BotMenuChatSwitchCommand( Client, key )
+{
+	switch( key )
+	{
+		case 0: client_cmd( Client, "shouldbotschat 1" );
+		case 1: client_cmd( Client, "shouldbotschat 0" );
+	}
+
+	return PLUGIN_HANDLED
+}
+
+
+@BotMenuChoosePercentCommand( Client, key )
+{
+	switch( key )
+	{
+		case 0:
+		{
+			if( Menu_ChatType == ChatType_Chat ) client_cmd( Client, "bot_chat_percent 100" );
+			if( Menu_ChatType == ChatType_Whine ) client_cmd( Client, "bot_whine_percent 100" );
+			if( Menu_ChatType == ChatType_Taunt ) client_cmd( Client, "bot_taunt_percent 100" );
+			if( Menu_ChatType == ChatType_Swap ) client_cmd( Client, "bot_chat_swap_percent 100" );
+			if( Menu_ChatType == ChatType_Lower ) client_cmd( Client, "bot_chat_lower_percent 100" );
+			if( Menu_ChatType == ChatType_Drop ) client_cmd( Client, "bot_chat_drop_percent 100" );
+			if( Menu_ChatType == ChatType_Tag ) client_cmd( Client, "bot_bot_tag_percent 100" );
+		}
+		case 1:
+		{
+			if( Menu_ChatType == ChatType_Chat ) client_cmd( Client, "bot_chat_percent 90" );
+			if( Menu_ChatType == ChatType_Whine ) client_cmd( Client, "bot_whine_percent 90" );
+			if( Menu_ChatType == ChatType_Taunt ) client_cmd( Client, "bot_taunt_percent 90" );
+			if( Menu_ChatType == ChatType_Swap ) client_cmd( Client, "bot_chat_swap_percent 90" );
+			if( Menu_ChatType == ChatType_Lower ) client_cmd( Client, "bot_chat_lower_percent 90" );
+			if( Menu_ChatType == ChatType_Drop ) client_cmd( Client, "bot_chat_drop_percent 90" );
+			if( Menu_ChatType == ChatType_Tag ) client_cmd( Client, "bot_bot_tag_percent 90" );
+		}
+		case 2:
+		{
+			if( Menu_ChatType == ChatType_Chat ) client_cmd( Client, "bot_chat_percent 75" );
+			if( Menu_ChatType == ChatType_Whine ) client_cmd( Client, "bot_whine_percent 75" );
+			if( Menu_ChatType == ChatType_Taunt ) client_cmd( Client, "bot_taunt_percent 75" );
+			if( Menu_ChatType == ChatType_Swap ) client_cmd( Client, "bot_chat_swap_percent 75" );
+			if( Menu_ChatType == ChatType_Lower ) client_cmd( Client, "bot_chat_lower_percent 75" );
+			if( Menu_ChatType == ChatType_Drop ) client_cmd( Client, "bot_chat_drop_percent 75" );
+			if( Menu_ChatType == ChatType_Tag ) client_cmd( Client, "bot_bot_tag_percent 75" );
+		}
+		case 3:
+		{
+			if( Menu_ChatType == ChatType_Chat ) client_cmd( Client, "bot_chat_percent 50" );
+			if( Menu_ChatType == ChatType_Whine ) client_cmd( Client, "bot_whine_percent 50" );
+			if( Menu_ChatType == ChatType_Taunt ) client_cmd( Client, "bot_taunt_percent 50" );
+			if( Menu_ChatType == ChatType_Swap ) client_cmd( Client, "bot_chat_swap_percent 50" );
+			if( Menu_ChatType == ChatType_Lower ) client_cmd( Client, "bot_chat_lower_percent 50" );
+			if( Menu_ChatType == ChatType_Drop ) client_cmd( Client, "bot_chat_drop_percent 50" );
+			if( Menu_ChatType == ChatType_Tag ) client_cmd( Client, "bot_bot_tag_percent 50" );
+		}
+		case 4:
+		{
+			if( Menu_ChatType == ChatType_Chat ) client_cmd( Client, "bot_chat_percent 25" );
+			if( Menu_ChatType == ChatType_Whine ) client_cmd( Client, "bot_whine_percent 25" );
+			if( Menu_ChatType == ChatType_Taunt ) client_cmd( Client, "bot_taunt_percent 25" );
+			if( Menu_ChatType == ChatType_Swap ) client_cmd( Client, "bot_chat_swap_percent 25" );
+			if( Menu_ChatType == ChatType_Lower ) client_cmd( Client, "bot_chat_lower_percent 25" );
+			if( Menu_ChatType == ChatType_Drop ) client_cmd( Client, "bot_chat_drop_percent 25" );
+			if( Menu_ChatType == ChatType_Tag ) client_cmd( Client, "bot_bot_tag_percent 25" );
+		}
+		case 5:
+		{
+			if( Menu_ChatType == ChatType_Chat ) client_cmd( Client, "bot_chat_percent 10" );
+			if( Menu_ChatType == ChatType_Whine ) client_cmd( Client, "bot_whine_percent 10" );
+			if( Menu_ChatType == ChatType_Taunt ) client_cmd( Client, "bot_taunt_percent 10" );
+			if( Menu_ChatType == ChatType_Swap ) client_cmd( Client, "bot_chat_swap_percent 10" );
+			if( Menu_ChatType == ChatType_Lower ) client_cmd( Client, "bot_chat_lower_percent 10" );
+			if( Menu_ChatType == ChatType_Drop ) client_cmd( Client, "bot_chat_drop_percent 10" );
+			if( Menu_ChatType == ChatType_Tag ) client_cmd( Client, "bot_bot_tag_percent 10" );
+		}
+		case 6:
+		{
+			if( Menu_ChatType == ChatType_Chat ) client_cmd( Client, "bot_chat_percent 0" );
+			if( Menu_ChatType == ChatType_Whine ) client_cmd( Client, "bot_whine_percent 0" );
+			if( Menu_ChatType == ChatType_Taunt ) client_cmd( Client, "bot_taunt_percent 0" );
+			if( Menu_ChatType == ChatType_Swap ) client_cmd( Client, "bot_chat_swap_percent 0" );
+			if( Menu_ChatType == ChatType_Lower ) client_cmd( Client, "bot_chat_lower_percent 0" );
+			if( Menu_ChatType == ChatType_Drop ) client_cmd( Client, "bot_chat_drop_percent 0" );
+			if( Menu_ChatType == ChatType_Tag ) client_cmd( Client, "bot_bot_tag_percent 0" );
+		}
+		case 7:
+		{
+			if( Menu_ChatType == ChatType_Chat ) client_cmd( Client, "bot_chat_percent -1" );
+			if( Menu_ChatType == ChatType_Whine ) client_cmd( Client, "bot_whine_percent -1" );
+			if( Menu_ChatType == ChatType_Taunt ) client_cmd( Client, "bot_taunt_percent -1" );
+			if( Menu_ChatType == ChatType_Swap ) client_cmd( Client, "bot_chat_swap_percent -1" );
+			if( Menu_ChatType == ChatType_Lower ) client_cmd( Client, "bot_chat_lower_percent -1" );
+			if( Menu_ChatType == ChatType_Drop ) client_cmd( Client, "bot_chat_drop_percent -1" );
+			if( Menu_ChatType == ChatType_Tag ) client_cmd( Client, "bot_bot_tag_percent -1" );
+		}
+	}
+
+	return PLUGIN_HANDLED
+}
+
+@BotMenuBotKickCommand( Client, key )
+{
+	switch( key )
+	{
+		case 0: client_cmd( Client, "botkickall" );
+		case 1: client_cmd( Client, "botkickallgood" );
+		case 2: client_cmd( Client, "botkickallevil" );
+	}
+
+	return PLUGIN_HANDLED
+}
+
+@BotMenuBotDebugCommand( Client, key )
+{
+	switch( key )
+	{
+		case 0: Menu_DebugType = DebugType_Shoot;
+		case 1: Menu_DebugType = DebugType_Search;
+		case 2: Menu_DebugType = DebugType_Ignore;
+		case 3: Menu_DebugType = DebugType_Move;
+	}
+
+	if( key >= 0 && key <= 3 ) @BotMenuDebugSwitch( Client );
+
+	return PLUGIN_HANDLED
+}
+
+@BotMenuDebugSwitchCommand( Client, key )
+{
+	switch( key )
+	{
+		case 0:
+		{
+			if( Menu_DebugType == DebugType_Shoot ) client_cmd( Client, "botsshoot 1" );
+			if( Menu_DebugType == DebugType_Search ) client_cmd( Client, "botssearchenemies 1" );
+			if( Menu_DebugType == DebugType_Ignore ) client_cmd( Client, "observer 1" );
+			if( Menu_DebugType == DebugType_Move ) client_cmd( Client, "botsmove 1" );
+		}
+		case 1:
+		{
+			if( Menu_DebugType == DebugType_Shoot ) client_cmd( Client, "botsshoot 0" );
+			if( Menu_DebugType == DebugType_Search ) client_cmd( Client, "botssearchenemies 0" );
+			if( Menu_DebugType == DebugType_Ignore ) client_cmd( Client, "observer 0" );
+			if( Menu_DebugType == DebugType_Move ) client_cmd( Client, "botsmove 0" );
+		}
+	}
+
+	return PLUGIN_HANDLED
+}
+
+@BotClassID() if( is_user_bot( get_msg_arg_int( 1 ) ) ) set_msg_arg_int( 5, ARG_BYTE, 10 );
+
+@BotInitiateTransformation( MsgID, dest )
+{
+	new Client = get_msg_arg_int( 1 );
+
+	/* Use CCI Custom Transformation FX
+
+	new Class = getClientDATAc( Client, cliClass );
+
+	if( !is_user_bot( Client ) ) return;
+
+	setClientFrozen( Client, true );
+
+	ForceCall( getClassDATAc( Class, cxPlugin ), "@ClassInitiateTransformation", "ccc", Client, 1, false );
+
+	new AscendTime[ 5 ];
+	float_to_str( getLevelDATAc( Class, 1, cxlAscendTime ), AscendTime, 5 );
+	set_task( str_to_float( AscendTime ), "@BotFinishTransformation", Client );
+
+	*/
+
+	if( !is_user_bot( Client ) ) return;
+
+	setClientDATAc( Client, cliLevel, 1 );
+
+	new Class = getClientDATAc( Client, cliClass );
+
+	new PowerupColor[ 3 ];
+	getLevelDATAv( Class, 1, cxlPowerUp, PowerupColor, 3 );
+
+	new szModel[ 65 ];
+	getLevelDATAv( Class, 1, cxlAuraModel, szModel, 65 );
+
+	for( new i; i < 25; i++ ) 
+	{
+		new org[ 3 ]; 
+		get_user_origin( Client, org );
+		message_begin( MSG_ALL, SVC_TEMPENTITY, org );
+		write_byte( TE_BEAMENTPOINT );
+		write_short( Client );
+		write_coord( org[0] + random_num( -200, 200 ) );
+		write_coord( org[1] + random_num( -200, 200 ) );
+		write_coord( org[2] + random_num( -200, 200 ) );
+		write_short( engfunc( EngFunc_ModelIndex, "sprites/stmbal1.spr" ) );
+		write_byte( 5 );
+		write_byte( 5 );
+		write_byte( 100 );
+		write_byte( 25 );
+		write_byte( 5 );
+		write_byte( PowerupColor[ 0 ] );
+		write_byte( PowerupColor[ 1 ] ); 
+		write_byte( PowerupColor[ 2 ] );
+		write_byte( 255 );
+		write_byte( 25 );
+		message_end(); 
+	}
+
+	AddFx( Client, "fxModelEntity", szModel, 0, 0, 50.0, 0, 0, 0, 1.0, 0.4, 0, getLevelDATAc( Class, 1, cxlAuraSkin ) );
+	AddFx( Client, "fxPowerup", 0, 0, 0 ); emit_sound( Client, CHAN_WEAPON, "evolution/null.wav", 1.0, ATTN_NORM, 0, PITCH_NORM );
+	AddFx( Client, "fxLgtField", 0.3 , 1, 255, 200, 20 );
+
+	set_task( 9.5, "@BotFinishTransformation", Client );
+}
+
+@BotCancelTransformation( MsgID, dest )
+{
+	new Client = get_msg_arg_int( 1 );
+
+	// CL_FROZEN[ Client ] = false;
+
+	if( !is_user_connected( Client ) )
+	{
+		remove_task( Client );
+		return;
+	}
+
+	if( getClientDATAc( Client, cliLevel ) != 1 ) setClientDATAc( Client, cliLevel, 0 );
+
+	message_begin( MSG_BROADCAST, SVC_TEMPENTITY );
+	write_byte( TE_KILLBEAM );
+	write_short( Client );
+	message_end();
+
+	RemFx( Client, "fxModelEntity", 0 );
+	RemFx( Client, "fxPowerup", 0 );
+	RemFx( Client, "fxLgtField", 0 );
+
+	remove_task( Client );
+}
+
+@BotFinishTransformation( Client )
+{
+	/* CCI Custom Transformation FX Finish
+
+	new Class = getClientDATAc( Client, cliClass );
+
+	ForceCall( getClassDATAc( Class, cxPlugin ), "@ClassFinishTransformation", "cc", Client, 1 );
+
+	setClientFrozen( Client, false );
+
+	*/
+
+	if( !is_user_connected( Client ) ) return;
+
+	setClientDATAc( Client, cliLevel, 1 );
+
+	RemFx( Client, "fxModelEntity", 0 );
+	RemFx( Client, "fxPowerup", 0 );
+	RemFx( Client, "fxLgtField", 0 );
+
+	AddFx( Client, "fxBlow" );
+	AddFx( Client, "fxPowerWave", "sprites/white.spr", 180, 145, 120, 30, 250 );
+}
+
+@BotSetData( MsgID, dest, Client )
+{
+	if( !is_user_bot( Client ) ) return;
+
+	if( getClientDATAc( Client, cliClass ) == -1 )
+	{
+		if( Bot_Class == 0 ) return;
+
+		new CORE[ 2 ];
+
+		CORE[ 0 ] = Client;
+		CORE[ 1 ] = Bot_Class - 1;
+
+		setClientDATAc( Client, cliClass, Bot_Class - 1 );
+		setClientDATAc( Client, cliLevel, 0 );
+		setClientPL( Client, getLevelDATAc( Bot_Class - 1, 0, cxlRequiredPL ) );
+
+		set_task( 0.000_001, "@BotSetClass", Client, CORE, 2 );
+
+		Bot_Class = 0;
+	}
+}
+
+@BotSetClass( CORE[] ) if( is_user_bot( CORE[ 0 ] ) ) forceClientCLASS( CORE[ 0 ], CORE[ 1 ], 0, true, true );
+
+public client_PostThink( Client )
+{
+	if( get_cvar_float( "mp_spawn_invulnerable_time" ) > 0.000_000 )
+		set_cvar_float( "mp_spawn_invulnerable_time", 0.000_000 ); // If > 0.0 the game crashes.
+
+	if( !is_user_bot( Client ) ) return;
+
+	if( getClientDATAc( Client, cliLevel ) == 0 )
+	{
+		setClientPL( Client, getLevelDATAc( getClientDATAc( Client, cliClass ), 0, cxlRequiredPL ) );
+
+		new szModel[ 23 ];
+		getLevelDATAv( getClientDATAc( Client, cliClass ), 0, cxlModel, szModel, 23 );
+		setClientMODEL( Client, szModel );
+	}
+	if( getClientDATAc( Client, cliLevel ) == 1 )
+	{
+		setClientPL( Client, getLevelDATAc( getClientDATAc( Client, cliClass ), 0, cxlRequiredPL ) * 2 );
+
+		if( getLevelDATAc( getClientDATAc( Client, cliClass ), 1, cxlModelIndex ) != 0 )
+		{
+			new szModel[ 23 ];
+			getLevelDATAv( getClientDATAc( Client, cliClass ), 1, cxlModel, szModel, 23 );
+			setClientMODEL( Client, szModel );
+		}
+	}
+}
+
+/* For freezing Bot
+
+public client_PreThink( Client )
+{
+	if( !is_user_bot( Client ) ) return;
+
+	if( CL_FROZEN[ Client ] )
+	{
+		setClientFLY( Client, true );
+		set_pdata_int( Client, 198, true );
+		set_pdata_int( Client, 200, true );
+		set_pdata_int( Client, 298, true );
+		set_pdata_int( Client, 301, true );
+		set_pdata_int( Client, 462, 0 );
+
+		if( pev( Client, pev_fuser4 ) < 10.0 ) set_pev( Client, pev_fuser4, 10.0 );
+	}
+}
+
+stock setClientFrozen( Client, bool: Enable = true )
+{
+	if( Enable )
+		CL_FROZEN[ Client ] = true;
+	else
+	{
+		CL_FROZEN[ Client ] = false;
+		set_pdata_int( Client, 198, false );
+		set_pdata_int( Client, 200, false );
+		set_pdata_int( Client, 298, false );
+		set_pdata_int( Client, 301, false );
+		set_pdata_int( Client, 462, getClientLEVELDATAc( Client, cxlSpeed ) );
+	}
+}
+
+*/

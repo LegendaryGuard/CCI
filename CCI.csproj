@@ -1,0 +1,88 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <ProjectGuid>{3F5BFD88-8015-4AE8-93E7-A6E211E6C458}</ProjectGuid>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <OutputType>WinExe</OutputType>
+    <AssemblyName>CCI</AssemblyName>
+    <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Platform)' == 'AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <OutputPath>bin\Debug\</OutputPath>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <OutputPath>bin\Release\</OutputPath>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationIcon>CCI.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="CCI.Properties\Resources.cs" />
+    <Compile Include="CCI.Properties\Settings.cs" />
+    <Compile Include="CCI\about.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="CCI\ClassPanel.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="CCI\ClassWizard.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="CCI\Console.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="CCI\core.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="CCI\Level.cs" />
+    <Compile Include="CCI\LevelPanel.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="CCI\main.cs" />
+    <Compile Include="CCI\MyControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="CCI\Plugin.cs" />
+    <Compile Include="CCI\PluginSort.cs" />
+    <Compile Include="CCI\PluginStyle.cs" />
+    <Compile Include="CCI\RenderMode.cs" />
+    <Compile Include="CCI\RGB.cs" />
+    <Compile Include="CCI\Serializer.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="CCI.Properties\Resources.resx">
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="CCI\ClassWizard.resx">
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="CCI\core.resx">
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\wizard.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="CCI.ico" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>
