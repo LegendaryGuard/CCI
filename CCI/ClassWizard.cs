@@ -1065,7 +1065,7 @@ namespace CCI
 			this.panel1.Controls.Add(this.btnBuild);
 			this.panel1.Controls.Add(this.btnNext);
 			this.panel1.Controls.Add(this.btnPrev);
-			this.panel1.Location = new Point(-2, 586);
+			this.panel1.Location = new Point(-2, 700);
 			this.panel1.Name = "panel1";
 			this.panel1.Size = new Size(560, 74);
 			this.panel1.TabIndex = 9;
@@ -1084,7 +1084,7 @@ namespace CCI
 			base.AutoScaleDimensions = new SizeF(6f, 13f);
 			base.AutoScaleMode = AutoScaleMode.Font;
 			this.BackColor = Color.WhiteSmoke;
-			base.ClientSize = new Size(556, 657);
+			base.ClientSize = new Size(556, 772);
 			base.Controls.Add(this.panel2);
 			base.Controls.Add(this.panel1);
 			base.Controls.Add(this.currControl);

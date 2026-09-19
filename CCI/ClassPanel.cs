@@ -298,7 +298,7 @@ namespace CCI
 			this.panel1.BackgroundImage = Resources.wizard;
 			this.panel1.Location = new Point(4, 415);
 			this.panel1.Name = "panel1";
-			this.panel1.Size = new Size(500, 350);
+			this.panel1.Size = new Size(500, 245);
             this.panel1.TabIndex = 31;
 
             /* Transformation FX & Step Sound */
@@ -403,7 +403,7 @@ namespace CCI
 			base.Controls.Add(this.panel1);
 			base.Controls.Add(this.groupBox3);
 			base.Name = "ClassPanel";
-			base.Size = new Size(509, 550);
+			base.Size = new Size(509, 665);
 			this.groupBox3.ResumeLayout(false);
 			this.groupBox3.PerformLayout();
 			((ISupportInitialize)this.levels).EndInit();
