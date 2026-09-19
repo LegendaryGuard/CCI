@@ -1,0 +1,57 @@
+name: Build CCI
+on: [push]
+
+jobs:
+  build:
+    name: Build on Windows
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v3
+
+      - name: Setup NuGet
+        uses: NuGet/setup-nuget@v4
+
+      - name: Download .NET Framework 2.0 reference assemblies
+        shell: pwsh
+        run: |
+          nuget install Microsoft.NETFramework.ReferenceAssemblies.net20 `
+            -Version 1.0.3 `
+            -OutputDirectory packages `
+            -NonInteractive
+
+      - name: Locate reference assemblies path
+        id: refs
+        shell: pwsh
+        run: |
+          $path = Resolve-Path "packages\Microsoft.NETFramework.ReferenceAssemblies.net20.1.0.3\build\.NETFramework\v2.0"
+          Write-Host "Reference assemblies at: $path"
+          "path=$path" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Build (Release)
+        shell: pwsh
+        run: |
+          msbuild CCI.csproj `
+            /p:Configuration=Release `
+            /p:FrameworkPathOverride="${{ steps.refs.outputs.path }}" `
+            /p:Platform=AnyCPU `
+            /verbosity:minimal
+
+      - name: Show build output
+        shell: pwsh
+        run: |
+          Get-ChildItem -Recurse bin | Format-Table -AutoSize
+
+      - name: Upload Release artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: CCI-Release
+          path: |
+            bin/Release/CCI.exe
+            bin/Release/CCI.exe.config
+          if-no-files-found: warn
+
